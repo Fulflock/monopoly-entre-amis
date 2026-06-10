@@ -43,6 +43,8 @@ class Game {
     this.log = [];
     this.chatLog = [];
     this.trade = null; // { id, from, to, giveMoney, giveProps, wantMoney, wantProps }
+    this.auction = null; // { idx, bid, bidderId, out: [ids retirés], endsAt }
+    this._auctionTimer = null;
     this.winner = null;
     this.lastActivity = Date.now();
   }
@@ -429,8 +431,94 @@ class Game {
     const p = this.assertTurn(playerId);
     if (this.sub !== 'buy' || this.pendingBuy === null) throw new Error('Rien à refuser.');
     const sq = this.square(this.pendingBuy);
-    this.addLog(`${p.name} ne veut pas de « ${sq.name} ».`);
-    this.finishBuyPhase(p);
+    this.addLog(`${p.name} ne veut pas de « ${sq.name} » : elle part aux enchères !`);
+    this.startAuction(this.pendingBuy);
+  }
+
+  // ---------- enchères (règle officielle : case refusée = vente aux enchères) ----------
+
+  startAuction(idx) {
+    // si personne ne peut miser au moins 10 €, pas d'enchère
+    if (!this.activePlayers().some((p) => p.money >= 10)) {
+      this.addLog('Personne ne peut miser : la case reste à la banque.');
+      this.finishBuyPhase(this.current());
+      return;
+    }
+    this.pendingBuy = null; // pendingDoubles est conservé jusqu'à la fin de l'enchère
+    this.auction = { idx, bid: 0, bidderId: null, out: [], endsAt: Date.now() + 15000 };
+    this.sub = 'auction';
+    this.addLog(`🔨 Enchère ouverte sur « ${this.square(idx).name} » — première offre à partir de 10 €.`, 'warn');
+    this.scheduleAuctionTimer();
+    this.emit();
+  }
+
+  scheduleAuctionTimer() {
+    clearTimeout(this._auctionTimer);
+    if (!this.auction) return;
+    const delay = Math.max(0, this.auction.endsAt - Date.now()) + 80;
+    this._auctionTimer = setTimeout(() => {
+      try {
+        this.resolveAuction();
+      } catch (err) {
+        console.error('Erreur résolution enchère :', err);
+      }
+    }, delay);
+  }
+
+  bid(playerId, amount) {
+    const a = this.auction;
+    if (!a) throw new Error('Aucune enchère en cours.');
+    const p = this.playerById(playerId);
+    if (!p || p.bankrupt) throw new Error('Joueur invalide.');
+    if (a.out.includes(playerId)) throw new Error('Tu t’es retiré de cette enchère.');
+    amount = Math.floor(Number(amount) || 0);
+    if (amount <= a.bid) throw new Error(`Il faut miser plus de ${a.bid} €.`);
+    if (amount < 10) throw new Error('Mise minimum : 10 €.');
+    if (amount > p.money) throw new Error('Tu n’as pas autant d’argent.');
+    a.bid = amount;
+    a.bidderId = playerId;
+    a.endsAt = Date.now() + 12000; // chaque mise relance le compte à rebours
+    this.addLog(`🔨 ${p.emoji} ${p.name} mise ${amount} € sur « ${this.square(a.idx).name} ».`);
+    this.scheduleAuctionTimer();
+    this.emit();
+  }
+
+  auctionPass(playerId) {
+    const a = this.auction;
+    if (!a) throw new Error('Aucune enchère en cours.');
+    const p = this.playerById(playerId);
+    if (!p || p.bankrupt || a.out.includes(playerId)) return;
+    if (a.bidderId === playerId) throw new Error('Tu mènes l’enchère, tu ne peux pas te retirer.');
+    a.out.push(playerId);
+    this.addLog(`${p.name} se retire de l’enchère.`);
+    const remaining = this.activePlayers().filter((x) => !a.out.includes(x.id));
+    if (remaining.length === 0 || (remaining.length === 1 && a.bidderId === remaining[0].id)) {
+      this.resolveAuction();
+      return;
+    }
+    this.emit();
+  }
+
+  resolveAuction() {
+    const a = this.auction;
+    if (!a) return;
+    clearTimeout(this._auctionTimer);
+    this.auction = null;
+    const sq = this.square(a.idx);
+    if (a.bidderId) {
+      const winner = this.playerById(a.bidderId);
+      winner.money -= a.bid;
+      this.props[a.idx] = { owner: winner.id, houses: 0, mortgaged: false };
+      this.addLog(`🔨 Adjugé ! ${winner.emoji} ${winner.name} remporte « ${sq.name} » pour ${a.bid} €.`, 'warn');
+    } else {
+      this.addLog(`🔨 Aucune offre : « ${sq.name} » reste à la banque.`);
+    }
+    // reprise du tour en cours
+    if (this.phase === 'playing') {
+      this.finishBuyPhase(this.current());
+    } else {
+      this.emit();
+    }
   }
 
   finishBuyPhase(p) {
@@ -625,6 +713,7 @@ class Game {
     const p = this.playerById(playerId);
     if (!p || p.bankrupt) throw new Error('Joueur invalide.');
     if (p.money >= 0) throw new Error('Tu n’es pas à découvert, pas besoin de faillite.');
+    if (this.auction) this.resolveAuction(); // on solde l'enchère en cours avant la faillite
 
     const creditor = p.lastCreditor ? this.playerById(p.lastCreditor) : null;
     for (const idx of this.propsOwnedBy(p.id)) {
@@ -699,6 +788,7 @@ class Game {
       dice: this.dice,
       pendingBuy: this.pendingBuy,
       trade: this.trade,
+      auction: this.auction,
       log: this.log.slice(-60),
       chatLog: this.chatLog.slice(-50),
       winner: this.winner,

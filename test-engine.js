@@ -56,6 +56,19 @@ for (let g = 0; g < 300; g++) {
       } else if (game.sub === 'buy') {
         if (cur.money >= game.square(game.pendingBuy).price && Math.random() < 0.8) game.buy(cur.id);
         else game.skipBuy(cur.id);
+      } else if (game.sub === 'auction') {
+        // chaque joueur mise ou se retire, puis on force la fin (pas d'attente du chrono)
+        for (const pl of game.activePlayers()) {
+          if (!game.auction) break;
+          if (game.auction.out.includes(pl.id)) continue;
+          const next = game.auction.bid + 10;
+          if (Math.random() < 0.5 && pl.money >= next) {
+            game.bid(pl.id, next);
+          } else if (game.auction.bidderId !== pl.id) {
+            game.auctionPass(pl.id);
+          }
+        }
+        if (game.auction) game.resolveAuction();
       } else if (game.sub === 'end') {
         if (cur.money < 0) {
           // tenter de se renflouer : vendre maisons puis hypothéquer

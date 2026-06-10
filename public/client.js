@@ -353,10 +353,17 @@
     const my = myPlayer();
     const cur = state.players[state.turn];
     zone.innerHTML = '';
+    clearInterval(renderActions._countdown);
 
     if (state.phase === 'ended') {
       const w = state.players.find((p) => p.id === state.winner);
       zone.innerHTML = `<div class="az-title">🏆 ${esc(w.name)} a gagné !</div>`;
+      return;
+    }
+
+    // ---- enchère en cours : prioritaire, visible par tout le monde ----
+    if (state.sub === 'auction' && state.auction) {
+      renderAuction(zone, my);
       return;
     }
 
@@ -392,7 +399,7 @@
       html.push(`<div class="az-sub">Prix : ${fmtMoney(sq.price)}${afford ? '' : ' — hypothèque d’abord pour financer !'}</div>`);
       html.push(`<div class="az-row">
         <button class="btn btn-green" id="az-buy" ${afford ? '' : 'disabled'}>Acheter</button>
-        <button class="btn btn-red" id="az-skip">Passer</button>
+        <button class="btn btn-red" id="az-skip" title="La case sera vendue aux enchères">Refuser 🔨</button>
       </div>`);
     } else if (state.sub === 'end') {
       html.push(`<div class="az-title">Tour terminé ?</div>`);
@@ -420,6 +427,56 @@
     } else {
       cm.textContent = '';
     }
+  }
+
+  // ───────────────────── enchères ─────────────────────
+
+  function renderAuction(zone, my) {
+    const a = state.auction;
+    const sq = BOARD[a.idx];
+    const leader = a.bidderId ? state.players.find((p) => p.id === a.bidderId) : null;
+    const iAmOut = my && (a.out.includes(my.id) || my.bankrupt);
+    const iLead = my && a.bidderId === my.id;
+    const band = sq.group ? `<div class="m-band" style="background:${GROUP_COLORS[sq.group]};height:10px;margin:4px 0"></div>` : '';
+
+    const nextBids = [10, 50, 100].map((inc) => (a.bid || 0) + inc);
+
+    let controls = '';
+    if (iAmOut) {
+      controls = `<div class="az-sub">Tu t’es retiré de l’enchère.</div>`;
+    } else if (my) {
+      const btns = nextBids
+        .map((v) => `<button class="btn btn-green btn-bid" data-bid="${v}" ${v > my.money ? 'disabled' : ''}>${v} €</button>`)
+        .join('');
+      controls = `
+        <div class="az-row">${btns}</div>
+        <button class="btn btn-red" id="az-auction-pass" ${iLead ? 'disabled title="Tu mènes l’enchère"' : ''}>Se retirer</button>`;
+    }
+
+    zone.innerHTML = `
+      <div class="az-title">🔨 Enchère : ${esc(sq.name)}</div>
+      ${band}
+      <div class="az-sub">${leader
+        ? `Meilleure offre : <b>${fmtMoney(a.bid)}</b> par <b style="color:${leader.color}">${leader.emoji} ${esc(leader.name)}</b>`
+        : 'Aucune offre pour l’instant (minimum 10 €)'}
+        — fin dans <b id="auction-timer">…</b></div>
+      ${controls}`;
+
+    zone.querySelectorAll('.btn-bid').forEach((b) => {
+      b.onclick = () => send('bid', { amount: Number(b.dataset.bid) });
+    });
+    const pass = $('#az-auction-pass');
+    if (pass && !iLead) pass.onclick = () => send('auctionPass');
+
+    const tick = () => {
+      const el = $('#auction-timer');
+      if (!el || !state.auction) return clearInterval(renderActions._countdown);
+      el.textContent = Math.max(0, Math.ceil((state.auction.endsAt - Date.now()) / 1000)) + ' s';
+    };
+    tick();
+    renderActions._countdown = setInterval(tick, 400);
+
+    $('#center-msg').textContent = `🔨 Enchère en cours sur ${sq.name} !`;
   }
 
   // ───────────────────── journal & chat ─────────────────────

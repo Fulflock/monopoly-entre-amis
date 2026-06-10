@@ -19,7 +19,10 @@ const games = new Map(); // code -> Game
 setInterval(() => {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   for (const [code, game] of games) {
-    if (game.lastActivity < cutoff) games.delete(code);
+    if (game.lastActivity < cutoff) {
+      clearTimeout(game._auctionTimer);
+      games.delete(code);
+    }
   }
 }, 60 * 60 * 1000);
 
@@ -47,6 +50,7 @@ io.on('connection', (socket) => {
       fn(payload || {});
       if (cb) cb({ ok: true });
     } catch (err) {
+      console.log(`[${game ? game.code : '?'}] action refusée pour ${player ? player.name : '?'} : ${err.message}`);
       if (cb) cb({ ok: false, error: err.message });
       else socket.emit('errorMsg', err.message);
     }
@@ -59,8 +63,10 @@ io.on('connection', (socket) => {
       games.set(code, game);
       player = game.addPlayer(payload.name, payload.emoji);
       socket.join(code);
+      console.log(`[${code}] partie créée par ${player.name}`);
       cb({ ok: true, code, playerId: player.id, token: player.token, state: game.publicState() });
     } catch (err) {
+      console.log(`[create] refus : ${err.message}`);
       cb({ ok: false, error: err.message });
     }
   });
@@ -73,8 +79,10 @@ io.on('connection', (socket) => {
       game = g;
       player = game.addPlayer(payload.name, payload.emoji);
       socket.join(code);
+      console.log(`[${code}] ${player.name} a rejoint (${game.players.length} joueurs)`);
       cb({ ok: true, code, playerId: player.id, token: player.token, state: game.publicState() });
     } catch (err) {
+      console.log(`[join ${payload && payload.code}] refus : ${err.message}`);
       cb({ ok: false, error: err.message });
     }
   });
@@ -98,7 +106,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('start', safe(() => game && game.start(player.id)));
+  socket.on('start', safe(() => {
+    if (game) {
+      game.start(player.id);
+      console.log(`[${game.code}] partie lancée avec ${game.players.length} joueurs`);
+    }
+  }));
   socket.on('roll', safe(() => game && game.roll(player.id)));
   socket.on('buy', safe(() => game && game.buy(player.id)));
   socket.on('skipBuy', safe(() => game && game.skipBuy(player.id)));
@@ -109,6 +122,8 @@ io.on('connection', (socket) => {
   socket.on('sellHouse', safe((p) => game && game.sellHouse(player.id, Number(p.idx))));
   socket.on('mortgage', safe((p) => game && game.mortgage(player.id, Number(p.idx))));
   socket.on('unmortgage', safe((p) => game && game.unmortgage(player.id, Number(p.idx))));
+  socket.on('bid', safe((p) => game && game.bid(player.id, p.amount)));
+  socket.on('auctionPass', safe(() => game && game.auctionPass(player.id)));
   socket.on('proposeTrade', safe((p) => game && game.proposeTrade(player.id, p)));
   socket.on('respondTrade', safe((p) => game && game.respondTrade(player.id, !!p.accept)));
   socket.on('bankrupt', safe(() => game && game.bankrupt(player.id)));
