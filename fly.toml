@@ -1,0 +1,16 @@
+# Déploiement Fly.io — Monopoly entre amis
+app = "monopoly-entre-amis"
+primary_region = "cdg" # Paris
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"   # s'endort quand personne ne joue (coût ~0)
+  auto_start_machines = true    # se réveille en ~1 s à la première visite
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
