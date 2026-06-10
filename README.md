@@ -1,5 +1,7 @@
 # 🎩 Monopoly entre amis
 
+> Projet de fan, non officiel et **non commercial**, créé pour jouer entre amis. Monopoly est une marque déposée de Hasbro, Inc. Ce projet n'est ni affilié à, ni approuvé par Hasbro.
+
 Un Monopoly en ligne **privé**, pour jouer uniquement entre amis, chacun depuis son navigateur (PC ou téléphone). Règles classiques de l'édition française : rues de Paris, gares, prison, cartes Chance et Caisse de communauté, maisons, hôtels, hypothèques, échanges, faillites.
 
 ## Jouer en local (sur ce PC)
