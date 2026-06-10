@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monopoly entre amis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Limelight&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎩</text></svg>" />
+</head>
+<body>
+
+  <!-- ════════ ACCUEIL ════════ -->
+  <section id="screen-home" class="screen">
+    <div class="home-card">
+      <div class="home-banner">MONOPOLY</div>
+      <p class="home-sub">— Édition entre amis · Paris —</p>
+
+      <div class="home-form">
+        <label for="inp-name">Ton pseudo</label>
+        <input id="inp-name" type="text" maxlength="20" placeholder="Ex. : Benjamin" autocomplete="off" />
+
+        <label>Ton pion</label>
+        <div id="emoji-picker" class="emoji-picker"></div>
+
+        <button id="btn-create" class="btn btn-red">Créer une partie</button>
+
+        <div class="home-divider"><span>ou rejoindre</span></div>
+
+        <div class="join-row">
+          <input id="inp-code" type="text" maxlength="4" placeholder="CODE" autocomplete="off" />
+          <button id="btn-join" class="btn btn-green">Rejoindre</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ SALON D'ATTENTE ════════ -->
+  <section id="screen-lobby" class="screen hidden">
+    <div class="home-card">
+      <div class="home-banner small">MONOPOLY</div>
+      <p class="home-sub">Salon d’attente</p>
+
+      <div class="lobby-code-wrap">
+        <p>Partage ce code avec tes amis :</p>
+        <div id="lobby-code" class="lobby-code">····</div>
+        <button id="btn-copy-link" class="btn-ghost">📋 Copier le lien d’invitation</button>
+      </div>
+
+      <ul id="lobby-players" class="lobby-players"></ul>
+
+      <button id="btn-start" class="btn btn-red hidden">🎲 Lancer la partie</button>
+      <p id="lobby-wait" class="lobby-wait">En attente de joueurs… (2 minimum)</p>
+    </div>
+  </section>
+
+  <!-- ════════ JEU ════════ -->
+  <section id="screen-game" class="screen hidden">
+    <div class="game-layout">
+
+      <div class="board-wrap">
+        <div id="board" class="board">
+          <div class="board-center">
+            <div class="center-logo">MONOPOLY</div>
+            <div class="center-sub">— entre amis —</div>
+            <div id="dice" class="dice-wrap hidden">
+              <div class="die" id="die1"></div>
+              <div class="die" id="die2"></div>
+            </div>
+            <div id="center-msg" class="center-msg"></div>
+          </div>
+          <div id="tokens-layer" class="tokens-layer"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div id="players-strip" class="players-strip"></div>
+
+        <div id="action-zone" class="action-zone"></div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="journal">Journal</button>
+          <button class="tab" data-tab="chat">Chat <span id="chat-badge" class="chat-badge hidden"></span></button>
+        </div>
+        <div id="tab-journal" class="tab-content">
+          <div id="log" class="log"></div>
+        </div>
+        <div id="tab-chat" class="tab-content hidden">
+          <div id="chat-messages" class="log"></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" type="text" maxlength="300" placeholder="Chambre tes potes…" autocomplete="off" />
+            <button type="submit" class="btn btn-green btn-sm">➤</button>
+          </form>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ════════ MODALES ════════ -->
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div id="modal" class="modal"></div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
