@@ -407,12 +407,6 @@
       html.push(`<button class="btn btn-green" id="az-end">✔️ Finir mon tour</button>`);
     }
 
-    // bouton d'échange toujours visible pendant la partie
-    const opponents = state.players.filter((p) => p.id !== me.playerId && !p.bankrupt);
-    if (my && !my.bankrupt && opponents.length > 0 && state.phase === 'playing') {
-      html.push(`<button class="btn btn-gold" id="az-trade">🤝 Proposer un échange</button>`);
-    }
-
     zone.innerHTML = html.join('');
     const bind = (id, ev) => { const b = $(id); if (b) b.onclick = () => send(ev); };
     bind('#az-roll', 'roll');
@@ -424,21 +418,6 @@
     const bk = $('#az-bankrupt');
     if (bk) bk.onclick = () => {
       if (confirm('Déclarer faillite ? C’est définitif !')) send('bankrupt');
-    };
-    const tr = $('#az-trade');
-    if (tr) tr.onclick = () => {
-      const opps = state.players.filter((p) => p.id !== me.playerId && !p.bankrupt);
-      if (opps.length === 1) return openTradeModal(opps[0].id);
-      openModal(`
-        <h3>🤝 Échanger avec qui ?</h3>
-        <div class="m-actions">
-          ${opps.map((p) => `<button class="btn btn-green" data-pick="${p.id}" style="border-left:8px solid ${p.color}">${p.emoji} ${esc(p.name)}</button>`).join('')}
-        </div>
-        <button class="m-close">Annuler</button>
-      `);
-      $('#modal').querySelectorAll('[data-pick]').forEach((b) => {
-        b.onclick = () => openTradeModal(b.dataset.pick);
-      });
     };
 
     // message du centre
